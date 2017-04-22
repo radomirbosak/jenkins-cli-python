@@ -3,6 +3,7 @@ import os
 import sys
 import datetime
 from time import time, sleep
+import ssl
 import jenkins
 import socket
 from xml.etree import ElementTree
@@ -31,6 +32,11 @@ STATUSES_COLOR = {'blue': {'symbol': 'S',
                   }
 
 
+# Default constants to parse booleans from .jenkins-cli
+TRUE = ['yes', 'Yes', 'YES', 'True', 'true', 'TRUE', '1']
+FALSE = ['no', 'No', 'NO', 'False', 'false', 'FALSE', '0']
+
+
 ENDCOLLOR = '\033[0m'
 ANIME_SYMBOL = ['..', '>>']
 AUTHOR_COLLOR = '\033[94m'
@@ -42,6 +48,20 @@ RESULT_TO_COLOR = {"FAILURE": 'red',
                    "ABORTED": 'aborted',
                    "DISABLED": 'aborted'
                    }
+
+
+def setup_ssl_context(ignore_ssl):
+    """Disable SSL verification if ignore_ssl=True"""
+
+    if ignore_ssl:
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+        except AttributeError:
+            # Legacy Python that doesn't verify HTTPS certificates by default
+            pass
+        else:
+            # Handle target environment that doesn't support HTTPS verification
+            ssl._create_default_https_context = _create_unverified_https_context
 
 
 def get_formated_status(job_color, format_pattern="%(color)s%(symbol)s%(run_status)s%(endcollor)s", extra_params=None):
@@ -87,16 +107,18 @@ class JenkinsCli(object):
                      "%s branch set to: %s")
 
     def __init__(self, args, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
-        self.jenkins = self.auth(args.host, args.username, args.password, timeout)
+        self.jenkins = self.auth(args.host, args.username, args.password, args.ignore_ssl, timeout)
 
     @classmethod
-    def auth(cls, host=None, username=None, password=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
+    def auth(cls, host=None, username=None, password=None, ignore_ssl=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT):
         if host is None or username is None or password is None:
             settings_dict = cls.read_settings_from_file()
             try:
                 host = host or settings_dict['host']
                 username = username or settings_dict.get('username', None)
                 password = password or settings_dict.get('password', None)
+                cls.ignore_ssl = ignore_ssl or settings_dict.get('ignore_ssl', 'False') in TRUE
+
             except KeyError:
                 raise CliException('Jenkins "host" should be specified by the command-line option or in the .jenkins-cli file')
         return jenkins.Jenkins(host, username, password, timeout)
@@ -124,6 +146,7 @@ class JenkinsCli(object):
         return settings_dict
 
     def run_command(self, args):
+        setup_ssl_context(self.ignore_ssl)
         command = args.jenkins_command
         getattr(self, command)(args)
 

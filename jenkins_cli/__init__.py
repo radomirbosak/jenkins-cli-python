@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--host', metavar='jenkins-url', help='Jenkins Host', default=None)
     parser.add_argument('--username', metavar='username', help='Jenkins Username', default=None)
     parser.add_argument('--password', metavar='password', help='Jenkins Password', default=None)
+    parser.add_argument('--ignore-ssl', action='store_true', help='Disable SSL verification')
     parser.add_argument('--version', '-v', action='version', version='jenkins-cli %s' % version)
 
     subparsers = parser.add_subparsers(title='Available commands', dest='jenkins_command')
