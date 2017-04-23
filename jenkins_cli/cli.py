@@ -34,7 +34,6 @@ STATUSES_COLOR = {'blue': {'symbol': 'S',
 
 # Default constants to parse booleans from .jenkins-cli
 TRUE = ['yes', 'Yes', 'YES', 'True', 'true', 'TRUE', '1']
-FALSE = ['no', 'No', 'NO', 'False', 'false', 'FALSE', '0']
 
 
 ENDCOLLOR = '\033[0m'
