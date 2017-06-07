@@ -17,11 +17,36 @@ _jenkins()
         console \
         changes \
         -h \
+        -e \
         --help \
         --host \
         --username \
         --password \
+        --environment \
         --version"
+
+    # figure out the environment
+    EXPECT_ENV=0
+    ENV="DEFAULT"
+    for i in "${words[@]}"
+    do
+        if [[ "$EXPECT_ENV" == "1" ]]; then
+            ENV="$i"
+            EXPECT_ENV=0
+        fi
+        if [[ "$i" == "-e" ]] || [[ "$i" == "--environment" ]]; then
+            EXPECT_ENV=1
+        fi
+    done
+
+    # figure out the config file
+    CONFIG_FILE=
+    if [ -r "$HOME/.jenkins-cli" ]; then
+        CONFIG_FILE="~/.jenkins-cli"
+    fi
+    if [ -r "$PWD/.jenkins-cli" ]; then
+        CONFIG_FILE="$PWD/.jenkins-cli"
+    fi
 
     case $prev in
       jobs)
@@ -29,16 +54,21 @@ _jenkins()
           ;;
       builds|start|info|configxml|setbranch|stop|console|changes)
         opts="-h --help"
-
         # if the cached-jobs file exists suggest also job names
         CACHE_DIR=${XDG_CACHE_HOME:-~/.cache}"/python-jenkins-cli"
-        if [ -r $CACHE_DIR/job_cache ]; then
-          opts="$opts $(cat $CACHE_DIR/job_cache)"
+        if [ -r "$CACHE_DIR/job_cache_$ENV" ]; then
+          opts="$opts $(cat $CACHE_DIR/job_cache_$ENV)"
         fi
           ;;
       queue|building)
         opts="-h --help"
           ;;
+      -e|--environment)
+        if [ -n "$CONFIG_FILE" ]; then
+            opts="$(grep -e  '\[.*\]' ~/.jenkins-cli | tr -d '[]')"
+        else
+            opts=""
+        fi
     esac
 
     COMPREPLY=($(compgen -W "${opts}" -- ${cur}))
